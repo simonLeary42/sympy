@@ -22,6 +22,16 @@ from sympy.utilities.misc import filldedent
 
 __doctest_requires__ = {('lambdify',): ['numpy', 'tensorflow']}
 
+def numpy_log(x, base=None):
+    import numpy
+    def is_sympy_E(x):
+        return hasattr(x, "name") and x.name == "e"
+    if not base or is_sympy_E(base):
+        base = numpy.e
+    if is_sympy_E(x):
+        x = numpy.e
+    return numpy.lib.scimath.logn(base, x)
+
 # Default namespaces, letting us define translations that can't be defined
 # by simple variable maps, like I => 1j
 MATH_DEFAULT: dict[str, Any] = {}
@@ -90,6 +100,7 @@ MPMATH_TRANSLATIONS = {
 
 NUMPY_TRANSLATIONS: dict[str, str] = {
     "Heaviside": "heaviside",
+    "log": numpy_log,
 }
 SCIPY_TRANSLATIONS: dict[str, str] = {}
 CUPY_TRANSLATIONS: dict[str, str] = {}
@@ -161,7 +172,10 @@ def _import(module, reload=False):
 
     # Add translated names to namespace
     for sympyname, translation in translations.items():
-        namespace[sympyname] = namespace[translation]
+        if callable(translation): # if translation is a function
+            namespace[sympyname] = translation
+        else:
+            namespace[sympyname] = namespace[translation]
 
     # For computing the modulus of a SymPy expression we use the builtin abs
     # function, instead of the previously used fabs function for all
